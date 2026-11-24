@@ -1,5 +1,5 @@
 """
-School Bot — чат-інтерфейс у стилі ChatGPT.
+School AI — чат-інтерфейс у стилі ChatGPT.
 Можливості: поле вводу зі скріпкою (фото), швидкі питання, історія чату.
 
 Запуск:  streamlit run app.py
@@ -7,6 +7,7 @@ School Bot — чат-інтерфейс у стилі ChatGPT.
 """
 
 import inspect
+import io
 import time
 
 import streamlit as st
@@ -16,7 +17,7 @@ from ai_functions import main_ai_function
 # ---------------------------------------------------------------------------
 # Налаштування
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="School Bot", page_icon="🎓", layout="centered")
+st.set_page_config(page_title="School AI", page_icon="🎓", layout="centered")
 
 USER_AVATAR = "🧑‍🎓"
 BOT_AVATAR = "🎓"
@@ -57,8 +58,26 @@ SUGGESTIONS = [
 st.markdown(
     """
     <style>
-    #MainMenu, footer, header {visibility: hidden;}
+    /* Ховаємо тільки зайве, але ЗАЛИШАЄМО шапку — в ній кнопка бічного меню (☰) */
+    #MainMenu, footer, [data-testid="stToolbarActions"], [data-testid="stAppDeployButton"],
+    [data-testid="stStatusWidget"], [data-testid="stDecoration"] {visibility: hidden;}
+    header[data-testid="stHeader"] {background: transparent;}
     .block-container {padding-top: 2rem; padding-bottom: 7rem; max-width: 780px;}
+
+    /* Кнопка відкриття меню — «полосочки» ☰ у лівому верхньому куті */
+    [data-testid="stExpandSidebarButton"],
+    [data-testid="stSidebarCollapsedControl"] button {
+        font-size: 0 !important; visibility: visible !important;
+        width: 2.6rem; height: 2.6rem; border-radius: 12px;
+        background: rgba(79,70,229,.10);
+    }
+    [data-testid="stExpandSidebarButton"] *,
+    [data-testid="stSidebarCollapsedControl"] button * {display: none !important;}
+    [data-testid="stExpandSidebarButton"]::after,
+    [data-testid="stSidebarCollapsedControl"] button::after {
+        content: "☰"; font-size: 1.5rem; color: #4F46E5; line-height: 2.6rem;
+    }
+    [data-testid="stSidebarCollapsedControl"] {visibility: visible !important;}
 
     .hero {text-align: center; padding: 2.5rem 0 1.5rem;}
     .hero h1 {
@@ -82,6 +101,16 @@ st.markdown(
         border-color: #4F46E5; color: #4F46E5; transform: translateY(-1px);
     }
     section[data-testid="stSidebar"] {border-right: 1px solid #E5E7EB;}
+
+    /* Адаптація під телефони */
+    @media (max-width: 640px) {
+        .block-container {padding: 3.4rem 0.9rem 6rem;}
+        .hero {padding: 0.5rem 0 1rem;}
+        .hero h1 {font-size: 2rem;}
+        .hero p {font-size: 0.95rem;}
+        [data-testid="stChatMessage"] {padding: 0.7rem 0.75rem;}
+        div.stButton > button {padding: 0.8rem 0.9rem;}
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -124,12 +153,15 @@ def ask_ai(text, images, history):
     kwargs = {}
     if images and "images" in params:
         kwargs["images"] = images
+    elif images and "image" in params:
+        # main_ai_function приймає одне фото — беремо перше
+        kwargs["image"] = io.BytesIO(images[0]["data"])
     if history and "history" in params:
         kwargs["history"] = history
-    if images and "images" not in params:
+    if images and "images" not in params and "image" not in params:
         st.warning(
             "Фото додано, але функція main_ai_function поки не приймає параметр "
-            "`images`. Додай його в ai_functions.py — тоді бот бачитиме картинки."
+            "`image`. Додай його в ai_functions.py — тоді бот бачитиме картинки."
         )
     return main_ai_function(text, **kwargs)
 
@@ -138,7 +170,7 @@ def ask_ai(text, images, history):
 # Бічна панель
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown("## 🎓 School Bot")
+    st.markdown("## 🎓 School AI")
     st.caption("Твій AI-помічник у навчанні")
 
     if st.button("➕ Новий чат"):
@@ -167,7 +199,7 @@ if not st.session_state.messages and not st.session_state.pending:
     st.markdown(
         """
         <div class="hero">
-            <h1>School Bot</h1>
+            <h1>School AI</h1>
             <p>Запитуй що завгодно про школу — поясню, перевірю, допоможу підготуватись.<br>
             Можна прикріпити фото задачі чи конспекту 📎</p>
         </div>
@@ -225,7 +257,7 @@ if submitted:
 
     with st.chat_message("assistant", avatar=BOT_AVATAR):
         try:
-            with st.spinner("School Bot думає..."):
+            with st.spinner("School AI думає..."):
                 result = str(ask_ai(ai_text, submitted["images"], history))
             st.write_stream(stream_text(result))
             st.session_state.messages.append({"role": "assistant", "content": result})
